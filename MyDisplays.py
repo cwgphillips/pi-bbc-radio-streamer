@@ -2,7 +2,7 @@ from random import randint
 import sys, os
 import time
 import ST7789 as ST7789
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageOps
 from colorsys import hsv_to_rgb
 import cairosvg
 
@@ -11,7 +11,14 @@ class SqauareDisplay:
     """
     WIDTH = 240
     HEIGHT = WIDTH
+    DIR_DOWNLOADED_IMAGES = "downloaded_images"
     image = None
+
+    icon_urls = {
+        "pause": "https://www.reshot.com/preview-assets/icons/4NK7FC936B/pause-4NK7FC936B.svg",
+        "mute": "https://www.reshot.com/preview-assets/icons/42HMZ5DWA7/mute-42HMZ5DWA7.svg",
+        "unmute": "https://www.reshot.com/preview-assets/icons/42HMZ5DWA7/mute-42HMZ5DWA7.svg",
+    }
 
     def __init__(self) -> None:
 
@@ -54,23 +61,16 @@ class SqauareDisplay:
         self.disp.display(self.image)
 
     def _parseImagePath(self, image_path):
-        if image_path[:4]=="http":
+        if image_path[0][:4]=="http":
             return self.get_from_url(image_path)
-        elif image_path[-4:] == '.png':
+        elif image_path[0][-4:] == '.png':
             return self.get_from_file(image_path)
-        elif image_path.lower()=='pause':
-            base = Image.new("RGBA",(self.WIDTH, self.HEIGHT),(255,255,255,0))
-            imPause = ImageDraw.Draw(base)
-            imPause.rectangle([10, 190, 20, 230], fill="#800080", outline ="green")
-            imPause.rectangle([30, 190, 40, 230], fill="#800080", outline ="green")
+        elif image_path[0].lower() in ['pause', 'mute', 'unmute']:
+            return self.get_from_url((self.icon_urls[image_path[0].lower()],image_path[1]))
+        elif image_path.lower()=='blank':
+            base = Image.new("RGBA",(self.WIDTH, self.HEIGHT),(0,0,0,0))
+            ImageDraw.Draw(base)                 
             return base
-        elif image_path.lower()=='mute':
-            base = Image.new("RGBA",(self.WIDTH, self.HEIGHT),(255,255,255,0))
-            imMute = ImageDraw.Draw(base)
-            imMute.line([(20, 10), (200, 230)], fill="red", width=20)
-            imMute.line([(220, 10), (40, 230)], fill="red", width=20)            
-            return base
-
         elif image_path==None:
             return None 
 
@@ -79,24 +79,29 @@ class SqauareDisplay:
         return image.resize((self.WIDTH, self.HEIGHT))
 
     def get_from_url(self, image_url_in):
-        print(f"{image_url_in}")
-        image_type = image_url_in[-4:]
-        downloaded_image = f"downloaded_image{image_type}"
-        os.system(f"curl -o {downloaded_image} {image_url_in}")
-
-        if image_type==".svg":
-            imageToShowPath = self.my_svg2png(downloaded_image)
+        testDoesImageAlreadyExistLocally = f"{self.DIR_DOWNLOADED_IMAGES}/{image_url_in[1]}.png"
+        if os.path.exists(testDoesImageAlreadyExistLocally):
+            imageToShowPath = testDoesImageAlreadyExistLocally
         else:
-            imageToShowPath = downloaded_image
+            image_type = os.path.splitext(os.path.basename(image_url_in[0]))[1]
+            if not os.path.exists(self.DIR_DOWNLOADED_IMAGES):
+                os.mkdir(self.DIR_DOWNLOADED_IMAGES)
+            downloaded_image = f"{self.DIR_DOWNLOADED_IMAGES}/{image_url_in[1]}{image_type}"
+            print(f"downloaded_image = {downloaded_image}")
+            os.system(f"curl -o {downloaded_image} {image_url_in[0]}")
+
+            if image_type==".svg":
+                imageToShowPath = self.my_svg2png(downloaded_image)
+            else:
+                imageToShowPath = downloaded_image
 
         print(f"Loading image: {imageToShowPath}")                        
-        image = Image.open(imageToShowPath)
-        # image = Image.open("downloaded_image.svg2.png")
-        image = image.resize((self.WIDTH, self.HEIGHT))
-        return image
+        
+        return self.get_from_file(imageToShowPath)
 
     def my_svg2png(self, svgImagePath):
-        pngImageOutPath = svgImagePath+"2.png"
+        pngImageOutPath = os.path.join(os.path.dirname(svgImagePath),\
+             os.path.splitext(os.path.basename(svgImagePath))[0]+".png")
         cairosvg.svg2png(url=svgImagePath, write_to=pngImageOutPath)
         return pngImageOutPath
         

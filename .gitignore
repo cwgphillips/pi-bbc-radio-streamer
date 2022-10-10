@@ -129,6 +129,6 @@ dmypy.json
 .pyre/
 
 # My List
-downloaded_image.svg
-downloaded_image.svg2.png
+.DS_Store
+downloaded_images/
 test1.mkv
