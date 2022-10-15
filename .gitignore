@@ -132,3 +132,4 @@ dmypy.json
 .DS_Store
 downloaded_images/
 test1.mkv
+local_config.json

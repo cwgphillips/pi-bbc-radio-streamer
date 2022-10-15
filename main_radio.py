@@ -4,6 +4,7 @@ import subprocess
 import threading
 import os
 import time
+import json
 
 import Station
 from MyDisplays import SqauareDisplay
@@ -55,6 +56,19 @@ global buttonEndTimes
 buttonStartTimes = {"A":None, "B":None, "X":None, "Y":None}
 buttonEndTimes = {"A":None, "B":None, "X":None, "Y":None}
 
+global local_config
+
+local_config = {'last_played': ""}
+
+LOCAL_CONFIG_FILE_NAME = "local_config.json"
+
+def try_load_local_config():
+    global local_config
+    if os.path.exists(LOCAL_CONFIG_FILE_NAME):
+        with open(LOCAL_CONFIG_FILE_NAME) as json_file:
+            local_config = json.load(json_file)
+
+
 def play(station:Station._Station, display:SqauareDisplay):
     global isPlaying
     print("\t### Trying to play...")
@@ -68,6 +82,7 @@ def play(station:Station._Station, display:SqauareDisplay):
 
     os.system(f"mpv {station.path_m3u8} --no-video --input-ipc-server=/tmp/mpvsocket --volume={SET_VOLUME} &")
     isPlaying=True
+    update_last_played(station.name)
     print(f"\t### Should now be playing {station.name}...")
 
 def stop():
@@ -153,6 +168,19 @@ def handle_button(pin):
                 elif elapsed >= LONG_PRESS:
                     stop()
 
+def update_last_played(station_name):
+    local_config['last_played'] = station_name
+    with open(LOCAL_CONFIG_FILE_NAME, 'w') as outfile:
+        json.dump(local_config, outfile)
+
+def try_playing_last_played():
+    if local_config is not None:
+        last_played = local_config['last_played']   
+        if last_played == 'bbc_4':
+            play(station_list['bbc_4'], display)
+        elif last_played == 'bbc_6':
+            play(station_list['bbc_6'], display)
+
 # Loop through out buttons and attach the "handle_button" function to each
 # We're watching the "FALLING" edge (transition from 3.3V to Ground) and
 # picking a generous bouncetime of 100ms to smooth out button presses.
@@ -164,6 +192,8 @@ for pin in BUTTONS:
 # Finally, since button handlers don't require a "while True" loop,
 # we pause the script to prevent it exiting immediately.
 try:
+    try_load_local_config()
+    try_playing_last_played()        
     signal.pause()    
 except KeyboardInterrupt:
     display.show('blank')
