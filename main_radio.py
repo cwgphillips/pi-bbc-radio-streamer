@@ -5,9 +5,11 @@ import threading
 import os
 import time
 import json
+from threading import Thread
 
 import Station
 from MyDisplays import SqauareDisplay
+import onkyo
 
 # SystemD service description located here: /lib/systemd/system/my_radio.service
 
@@ -61,6 +63,26 @@ global local_config
 local_config = {'last_played': ""}
 
 LOCAL_CONFIG_FILE_NAME = "local_config.json"
+
+ONKYO_DEVICE_ID = "0009B0E4415A"
+global onkyo_device_ip_address
+
+def initialise_onkyo():
+    global onkyo_device_ip_address
+    onkyo_devices = onkyo.try_get_devices()
+    onkyo_device_ip_address = onkyo_devices[ONKYO_DEVICE_ID]
+    try_turn_on_onkyo()
+
+def try_turn_on_onkyo():
+    print("\t### Turning on Onkyo")
+    onkyo.try_turn_on(onkyo_device_ip_address)
+    print("\t###Setting Onkyo volume")
+    onkyo.try_set_volume(onkyo_device_ip_address, 12)
+    print("\t### Setting Onkyo to 'aux1'")
+    onkyo.try_set_source(onkyo_device_ip_address, 'aux1')
+
+def try_turn_off_onkyo():
+    onkyo.try_turn_off(onkyo_device_ip_address)
 
 def try_load_local_config():
     global local_config
@@ -158,6 +180,7 @@ def handle_button(pin):
                 elif elapsed >= LONG_PRESS:
                     print(f"t={elapsed} ...shutting down")
                     display.show('blank')
+                    try_turn_off_onkyo()
                     os.system("sudo shutdown -h now")
 
     elif label == 'B':
@@ -192,10 +215,13 @@ for pin in BUTTONS:
 # Finally, since button handlers don't require a "while True" loop,
 # we pause the script to prevent it exiting immediately.
 try:
+    thread_onkyo = Thread(target=initialise_onkyo)
+    thread_onkyo.start()
     try_load_local_config()
     try_playing_last_played()        
     signal.pause()    
 except KeyboardInterrupt:
     display.show('blank')
     print("\nKeyboardInterrupt -- quitting")
+    try_turn_off_onkyo()
     pass
