@@ -121,6 +121,48 @@ Then you can type `alsamixer` to control the volume.
 sudo raspi-config --> 1 System Options --> S5 Boot / Auto Login --> B2 Console Autologin
 ```
 
+## Run from start up
+Create a system file
+```
+sudo nano /usr/lib/systemd/system/my_radio.service
+```
+And add the following...
+
+```
+[Unit]
+# Play my radio on boot
+Description=my_radio
+After=network.target
+
+[Service]
+Type=simple
+PermissionsStartOnly=True
+Environment="PYTHONUNBUFFERED=TRUE"
+User=pi
+Group=gpio
+RuntimeDirectoryMode=0755
+ExecStart=/bin/sh -c "cd /home/pi/repo/pi-bbc-radio-streamer && \
+	python main_radio.py"
+PIDFile=/home/pi/my_mpv_example/my_radio.pid
+ExecStop=/usr/bin/pkill --signal SIGTERM --pidfile cd /home/pi/repo/pi-bbc-radio-streamer/my_radio.pid
+WorkingDirectory=/home/pi/repo/pi-bbc-radio-streamer
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then enable and start the system file
+```
+sudo systemctl enable my_radio.service 
+```
+And then start it
+```
+sudo systemctl start my_radio.service
+```
+
+
 # Useful Referneces for Set-Up
 Pirate-Audio HAT: https://github.com/pimoroni/pirate-audio
 
