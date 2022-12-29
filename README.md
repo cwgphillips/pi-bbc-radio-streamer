@@ -169,6 +169,39 @@ sudo systemctl start my_radio.service
 ```
 
 
+# Try reducing boot time 
+To see how long boot took 
+```
+systemd-analyze
+```
+
+...and to see which service are ran and how much time they took:
+
+```
+systemd-analyze blame
+```
+
+## Bluetooth
+I'm not using bluetooth so try disabling this service
+Edit the config:
+```
+sudo nano /boot/config.txt
+```
+And then add to the end (to see more info read `/boot/overlays/README`)
+```
+# Disable Bluetooth
+dtoverlay=disable-bt
+```
+
+Then disable the associated services running with it
+```
+sudo systemctl disable hciuart.service
+sudo systemctl disable bluetooth.service
+```
+
+
+
+
 # Useful Referneces for Set-Up
 Pirate-Audio HAT: https://github.com/pimoroni/pirate-audio
 
