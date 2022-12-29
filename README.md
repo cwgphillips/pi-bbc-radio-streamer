@@ -61,9 +61,15 @@ git clone git@github.com:cwgphillips/pi-bbc-radio-streamer.git
 ```
 
 Install additional packages:
+For modifying svg images:
 ```
 pip install cairosvg
 ```
+For connecting to Onkyo:
+```
+pip install onkyo-eiscp
+```
+
 
 ## Sound
 Create a new audio config file in ~/.asoundrc by typing `nano ~/.asoundrc` and insterdint the following text:
