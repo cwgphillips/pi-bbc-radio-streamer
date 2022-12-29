@@ -34,6 +34,7 @@ display.show_composite('blank', \
 isPlaying = None
 isMuted = False
 SET_VOLUME = 100
+bootUp = True
 
 # The buttons on Pirate Audio are connected to pins 5, 6, 16 and 24
 # Boards prior to 23 January 2020 used 5, 6, 16 and 20
@@ -93,26 +94,29 @@ def try_load_local_config():
 
 def play(station:Station._Station, display:SqauareDisplay):
     global isPlaying
-    print("\t### Trying to play...")
-    if isPlaying:
-        stop()
-    # display.show((station.path_icon, station.name))
-    display.show_composite((station.path_icon, station.name), \
-        (station_list['bbc_4'].path_icon, 'bbc_4'), \
-            (station_list['bbc_6'].path_icon, 'bbc_6'), \
-                ('pause', 'pause'), ('mute', 'mute'))
+    global bootUp
+    stopOK=stop()
+    if stopOK==0 or bootUp:
+        bootUp = False
+        print("\t### Trying to play...")
+        display.show_composite((station.path_icon, station.name), \
+            (station_list['bbc_4'].path_icon, 'bbc_4'), \
+                (station_list['bbc_6'].path_icon, 'bbc_6'), \
+                    ('pause', 'pause'), ('mute', 'mute'))
 
-    os.system(f"mpv {station.path_m3u8} --no-video --input-ipc-server=/tmp/mpvsocket --volume={SET_VOLUME} &")
-    isPlaying=True
-    update_last_played(station.name)
-    print(f"\t### Should now be playing {station.name}...")
+        os.system(f"mpv {station.path_m3u8} --no-video --input-ipc-server=/tmp/mpvsocket --volume={SET_VOLUME} &")
+        isPlaying=True
+        update_last_played(station.name)
+        print(f"\t### Should now be playing {station.name}...")
 
 def stop():
-    os.system('echo "stop" | socat - /tmp/mpvsocket')
-    display.show_composite('blank', \
-        (station_list['bbc_4'].path_icon, 'bbc_4'), \
-            (station_list['bbc_6'].path_icon, 'bbc_6'), \
-                ('pause', 'pause'), ('mute', 'mute'))
+    sysOut = os.system('echo "stop" | socat - /tmp/mpvsocket')
+    if sysOut == 0:
+        display.show_composite('blank', \
+            (station_list['bbc_4'].path_icon, 'bbc_4'), \
+                (station_list['bbc_6'].path_icon, 'bbc_6'), \
+                    ('pause', 'pause'), ('mute', 'mute'))
+    return sysOut
 
 def pause():
     global isPlaying
