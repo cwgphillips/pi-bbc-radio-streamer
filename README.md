@@ -11,17 +11,48 @@ N.B. Tested on RPi Zero W and RPi Zero 2
 
 # Set-up
 
+Since the release of Bookworm, some of the GPIO and `pip install` processes have changed.
+The premise seems to be that try to use `apt install` where possible rather than `pip install`. 
+
+See official documentation here: https://www.raspberrypi.com/documentation/computers/os.html#python-on-raspberry-pi 
+
+
+(Some additional info here: https://learn.adafruit.com/python-virtual-environment-usage-on-raspberry-pi/overview)
+
+`apt` is also precomipled, so should also install faster than `pip`.
+
+To use VS Code remotely, I had to increase the memory swap size. I increased it from the default 100 to 1024. This then seemed to stop things locking up.
+(See here for a guide: https://pimylifeup.com/raspberry-pi-swap-file/)
+
 ## Install Pirate Audio bits
 Install dependencies…
 ```
 sudo apt update
-
-sudo apt install python3-rpi.gpio python3-spidev python3-pip python3-pil python3-numpy
 ```
+```
+sudo apt install python3-spidev python3-pip python3-pil python3-numpy socat
+```
+
+This is the new way (since Bookworm) of controlling GPIO (it should already be installed as part of the Bookworm OS but if not...):
+```
+sudo apt install python3-gpiozero
+```
+
+Now (as of Bookworm) we must create a new virtual environment to install our `pip` packages.
+
+```
+python -m venv --system-site-packages .venv
+```
+
+and then activate it:
+```
+source .venv/bin/activate
+```
+
 
 Then install the st7789 (screen) library:
 ```
-sudo pip install st7789
+pip install st7789
 ```
 
 ## Settings for the screen and audio:
@@ -41,15 +72,31 @@ dtparam=audio=off
 Yes`, to enable
 
 ## MPV
-Install older version to avoid issues!
+Install mpv, a portable and lightweight cross-platform media player.  
+Previously an older version was installed to avoid issues, but installing without specifying a version seems to work OK.
+
+Previous:
+
+&ensp; libmpv-dev=0.32.0-3 
+
+&ensp; python-mpv==0.5.2
+
+Current:
+
+&ensp; mpv=0.35.1-4
+
+&ensp; libmpv-dev=0.35.1-4
+
+&ensp; python-mpv==1.0.5
+
 ```
-sudo apt install libmpv-dev=0.32.0-3
+sudo apt install mpv libmpv-dev
  
-pip install python-mpv==0.5.2
+pip install python-mpv
 ```
 
 
-## Clone my repo
+## Clone this repo
 Install git:
 ```
 sudo apt-get install git
@@ -147,11 +194,11 @@ Environment="PYTHONUNBUFFERED=TRUE"
 User=pi
 Group=gpio
 RuntimeDirectoryMode=0755
-ExecStart=/bin/sh -c "cd /home/pi/repo/pi-bbc-radio-streamer && \
-	python main_radio.py"
+ExecStart=/bin/sh -c "cd /home/pi/pi-bbc-radio-streamer && \
+	/home/pi/pi-bbc-radio-streamer/.venv/bin/python main_radio.py"
 PIDFile=/home/pi/my_mpv_example/my_radio.pid
-ExecStop=/usr/bin/pkill --signal SIGTERM --pidfile cd /home/pi/repo/pi-bbc-radio-streamer/my_radio.pid
-WorkingDirectory=/home/pi/repo/pi-bbc-radio-streamer
+ExecStop=/usr/bin/pkill --signal SIGTERM --pidfile cd /home/pi/pi-bbc-radio-streamer/my_radio.pid
+WorkingDirectory=/home/pi/pi-bbc-radio-streamer
 Restart=always
 RestartSec=15
 
@@ -167,7 +214,10 @@ And then start it
 ```
 sudo systemctl start my_radio.service
 ```
-
+To see the log messeages generated
+```
+journalctl -u my_radio.service -b
+```
 
 # Try reducing boot time 
 To see how long boot took 
