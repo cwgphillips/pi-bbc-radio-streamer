@@ -133,3 +133,4 @@ dmypy.json
 downloaded_images/
 test1.mkv
 local_config.json
+.vscode
