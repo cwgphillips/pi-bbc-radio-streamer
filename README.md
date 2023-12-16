@@ -218,6 +218,11 @@ To see the log messeages generated
 ```
 journalctl -u my_radio.service -b
 ```
+> [!NOTE]
+> To stop and restart the service pulling in any updated code:
+> ```
+> sudo systemctl stop my_radio.service && sudo systemctl enable my_radio.service && sudo systemctl start my_radio.service
+> ```
 
 # Try reducing boot time 
 To see how long boot took 
