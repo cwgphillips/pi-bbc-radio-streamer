@@ -1,11 +1,8 @@
 import signal
-from gpiozero import LED, Button
-import subprocess
-import threading
+from gpiozero import Button
 import os
 import time
 import json
-from threading import Thread
 
 import Station
 from MyDisplays import SqauareDisplay
@@ -14,6 +11,8 @@ import onkyo
 # SystemD service description located here: /lib/systemd/system/my_radio.service
 
 print("""main_radio.py - Firing up the internet radio!
+
+SystemD service description located here: /lib/systemd/system/my_radio.service
 
 Press Ctrl+C to exit!
 
@@ -88,17 +87,13 @@ def play(station:Station._Station, display:SqauareDisplay):
     global is_playing, is_stopped
     global boot_up
     global display_areas_map
-    
+
     stopOK=stop()
-    
+
     if stopOK==0 or boot_up:
         boot_up = False
         print("\t### Trying to play...")
-        # display.show_composite((station.path_icon, station.name), \
-        #     (station_dictionary['bbc_4'].path_icon, 'bbc_4'), \
-        #         (station_dictionary['bbc_6'].path_icon, 'bbc_6'), \
-        #             ('pause', 'pause'), ('mute', 'mute'))
-        
+
         display_areas_map["Main"] = stations.station_for_display(station.name)
         display_areas_map["B"] = "pause"
         display.show_composite(*display_areas_map.values())
@@ -114,10 +109,6 @@ def stop():
     global display_areas_map, is_stopped
     sysOut = os.system('echo "stop" | socat - /tmp/mpvsocket && rm /tmp/mpvsocket')
     if sysOut == 0:
-        # display.show_composite('blank', \
-        #     (station_dictionary['bbc_4'].path_icon, 'bbc_4'), \
-        #         (station_dictionary['bbc_6'].path_icon, 'bbc_6'), \
-        #             ('pause', 'pause'), ('mute', 'mute'))
         display_areas_map["Main"] = "blank"
         display_areas_map["B"] = "blank"
         display.show_composite(*display_areas_map.values())
@@ -191,7 +182,7 @@ def get_next_station_name(label):
 
 def pressed(btn):
     global button_start_time
-    # print(f"button {btn.pin.number} was pressed")
+
     button_start_times[str(btn.pin.number)] = time.time()
     btn.was_held = False
 
@@ -203,7 +194,6 @@ def released(btn):
     if btn.was_held:
         print(f"\t### Button {pin} was held so skipping...")
         return
-
 
     global button_end_times, button_press_durations
     global is_playing
@@ -222,16 +212,6 @@ def released(btn):
                 station_name = display_areas_map[label][1]
                 print(f"\t### station_name {station_name}")
                 play(station_dictionary[station_name], display)
-
-    # if label == 'A':
-    #     if elapsed:
-    #         if elapsed < LONG_PRESS:
-    #             play(station_dictionary['bbc_4'], display)
-
-    # if label == 'X':
-    #     if elapsed:
-    #         if elapsed < LONG_PRESS:
-    #             play(station_dictionary['bbc_6'], display)
 
     if label == 'Y':
         if elapsed:
@@ -263,10 +243,6 @@ def try_playing_last_played():
     if local_config is not None:
         last_played = local_config['last_played']
         play(station_dictionary[last_played], display)
-        # if last_played == 'bbc_4':
-        #     play(station_dictionary['bbc_4'], display)
-        # elif last_played == 'bbc_6':
-        #     play(station_dictionary['bbc_6'], display)
 
 
 stations = Station.Stations()
@@ -285,7 +261,6 @@ display = SqauareDisplay()
 display.show('blank')
 display.show_composite(*display_areas_map.values())
 
-
 # Buttons connect to ground when pressed, so they should be set
 # with a "PULL UP", which weakly pulls the input signal to 3.3V.
 for pin in BUTTONS:
@@ -293,7 +268,6 @@ for pin in BUTTONS:
     b.when_pressed = pressed
     b.when_released = released
     b.when_held = held
-
 
 # Finally, since button handlers don't require a "while True" loop,
 # we pause the script to prevent it exiting immediately.
