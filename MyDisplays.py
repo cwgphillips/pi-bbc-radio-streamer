@@ -17,7 +17,9 @@ class SqauareDisplay:
     icon_urls = {
         "pause": "https://www.reshot.com/preview-assets/icons/4NK7FC936B/pause-4NK7FC936B.svg",
         "mute": "https://www.reshot.com/preview-assets/icons/42HMZ5DWA7/mute-42HMZ5DWA7.svg",
-        "unmute": "https://www.reshot.com/preview-assets/icons/42HMZ5DWA7/mute-42HMZ5DWA7.svg",
+        "unmute": "https://www.reshot.com/preview-assets/icons/RHD29KPNSA/volume-RHD29KPNSA.svg",
+        "play": "https://www.reshot.com/preview-assets/icons/M5CZEU4XWN/play-M5CZEU4XWN.svg",
+        "stop": "https://www.reshot.com/preview-assets/icons/6TMKY3BGJX/stop-6TMKY3BGJX.svg",
     }
 
     def __init__(self) -> None:
@@ -61,18 +63,25 @@ class SqauareDisplay:
         self.disp.display(self.image)
 
     def _parseImagePath(self, image_path):
-        if image_path[0][:4]=="http":
-            return self.get_from_url(image_path)
-        elif image_path[0][-4:] == '.png':
-            return self.get_from_file(image_path)
-        elif image_path[0].lower() in ['pause', 'mute', 'unmute']:
-            return self.get_from_url((self.icon_urls[image_path[0].lower()],image_path[1]))
+        print(f"\t### image_path: {image_path}")
+        if type(image_path) is list or type(image_path) is tuple:
+            if image_path[0][:4]=="http":
+                return self.get_from_url(image_path)
+            elif image_path[0][-4:] == '.png':
+                return self.get_from_file(image_path)
+            elif image_path[0].lower() in list(self.icon_urls.keys()):
+                return self.get_from_url((self.icon_urls[image_path[0].lower()],image_path[1]))
+        
+        elif image_path.lower() in list(self.icon_urls.keys()):
+            return self.get_from_url((self.icon_urls[image_path.lower()],image_path))
+        
         elif image_path.lower()=='blank':
             base = Image.new("RGBA",(self.WIDTH, self.HEIGHT),(0,0,0,0))
-            ImageDraw.Draw(base)                 
+            ImageDraw.Draw(base)
             return base
-        elif image_path==None:
-            return None 
+        
+        elif image_path is None:
+            return None
 
     def get_from_file(self, image_file_name_in):
         image = Image.open(image_file_name_in)
@@ -80,9 +89,12 @@ class SqauareDisplay:
 
     def get_from_url(self, image_url_in):
         testDoesImageAlreadyExistLocally = f"{self.DIR_DOWNLOADED_IMAGES}/{image_url_in[1]}.png"
+        print(f"\t### testDoesImageAlreadyExistLocally: {testDoesImageAlreadyExistLocally}")
         if os.path.exists(testDoesImageAlreadyExistLocally):
+            print(f"\t### Does exist... testDoesImageAlreadyExistLocally: {testDoesImageAlreadyExistLocally}")
             imageToShowPath = testDoesImageAlreadyExistLocally
         else:
+            print(f"\t### Does not exist... testDoesImageAlreadyExistLocally: {testDoesImageAlreadyExistLocally}")
             image_type = os.path.splitext(os.path.basename(image_url_in[0]))[1]
             if not os.path.exists(self.DIR_DOWNLOADED_IMAGES):
                 os.mkdir(self.DIR_DOWNLOADED_IMAGES)
