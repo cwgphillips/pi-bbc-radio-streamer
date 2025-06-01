@@ -17,6 +17,7 @@ class SqauareDisplay:
         "unmute": "https://www.reshot.com/preview-assets/icons/RHD29KPNSA/volume-RHD29KPNSA.svg",
         "play": "https://www.reshot.com/preview-assets/icons/M5CZEU4XWN/play-M5CZEU4XWN.svg",
         "stop": "https://www.reshot.com/preview-assets/icons/6TMKY3BGJX/stop-6TMKY3BGJX.svg",
+	"power": "https://www.reshot.com/preview-assets/icons/RHDJ9SM6CL/power-button-RHDJ9SM6CL.svg"
     }
 
 

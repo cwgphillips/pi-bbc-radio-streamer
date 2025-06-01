@@ -19,7 +19,7 @@ Press Ctrl+C to exit!
 """)
 
 SET_VOLUME = 100
-LONG_PRESS = 2
+LONG_PRESS = 1
 
 LOCAL_CONFIG_FILE_NAME = "local_config.json"
 
@@ -61,6 +61,7 @@ def initialise_onkyo():
 
 
 def try_turn_on_onkyo():
+    global onkyo_device_ip_address
     print("\t### Turning on Onkyo")
     onkyo.try_turn_on(onkyo_device_ip_address)
     print("\t###Setting Onkyo volume")
@@ -98,7 +99,7 @@ def play(station:Station._Station, display:SqauareDisplay):
         display_areas_map["B"] = "pause"
         display.show_composite(*display_areas_map.values())
 
-        os.system(f"mpv {station.path_m3u8} --no-video --input-ipc-server=/tmp/mpvsocket --volume={SET_VOLUME} &")
+        os.system(f"mpv --demuxer-lavf-o=protocol_whitelist=[http,https,tcp,file] {station.path_m3u8} --no-video --input-ipc-server=/tmp/mpvsocket --volume={SET_VOLUME} &")
         is_playing = True
         is_stopped = False
         update_last_played(station.name)
@@ -158,6 +159,10 @@ def held(btn):
 
     if label == "A" or label == "X":
         cycle_through_displayed_station(label)
+    elif label == "Y":
+        shutdown_now()
+    elif label == "B":
+        stop()
 
 
 def cycle_through_displayed_station(label):
@@ -221,9 +226,7 @@ def released(btn):
 
             elif elapsed >= LONG_PRESS:
                 print(f"t={elapsed} ...shutting down")
-                display.show('blank')
-                try_turn_off_onkyo()
-                os.system("sudo shutdown -h now")
+                shutdown_now()
 
     elif label == 'B':
         if elapsed:
@@ -231,6 +234,13 @@ def released(btn):
                 pause()
             elif elapsed >= LONG_PRESS:
                 stop()
+
+
+def shutdown_now():
+    print("\t### ...shutting down")
+    display.show('blank')
+    try_turn_off_onkyo()
+    os.system("sudo shutdown -h now")
 
 
 def update_last_played(station_name):
@@ -254,7 +264,7 @@ display_areas_map = {
     "A": stations.station_for_display(station_names[DEFAULT_STATION_INDEX_A]),
     "X": stations.station_for_display(station_names[DEFAULT_STATION_INDEX_X]),
     "B": "pause",
-    "Y": "mute"
+    "Y": "power"
 }
 
 display = SqauareDisplay()
@@ -264,7 +274,7 @@ display.show_composite(*display_areas_map.values())
 # Buttons connect to ground when pressed, so they should be set
 # with a "PULL UP", which weakly pulls the input signal to 3.3V.
 for pin in BUTTONS:
-    b = Button(pin, bounce_time=0.05, hold_time=LONG_PRESS+2, hold_repeat=True)
+    b = Button(pin, bounce_time=0.05, hold_time=LONG_PRESS+0.5, hold_repeat=True)
     b.when_pressed = pressed
     b.when_released = released
     b.when_held = held
