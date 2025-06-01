@@ -4,6 +4,8 @@ import os
 import time
 import json
 
+import paho.mqtt.client as paho
+
 import Station
 from MyDisplays import SqauareDisplay
 import onkyo
@@ -17,6 +19,8 @@ SystemD service description located here: /lib/systemd/system/my_radio.service
 Press Ctrl+C to exit!
 
 """)
+
+MQTT_ADDRESS = "192."
 
 SET_VOLUME = 100
 LONG_PRESS = 1
@@ -52,6 +56,22 @@ local_config = {'last_played': ""}
 
 global onkyo_device_ip_address
 
+
+def message_handling(client, userdata, msg):
+    print(f"{msg.topic}: {msg.payload.decode()}")
+
+
+global client
+
+def initialise_mqtt():
+    client = paho.Client()
+    client.on_message = message_handling
+
+    if client.connect("localhost", 1883, 60) != 0:
+        print("Couldn't connect to the mqtt broker")
+
+    client.subscribe("test_topic")    
+    
 
 def initialise_onkyo():
     global onkyo_device_ip_address
@@ -282,6 +302,7 @@ for pin in BUTTONS:
 # Finally, since button handlers don't require a "while True" loop,
 # we pause the script to prevent it exiting immediately.
 try:
+    initialise_mqtt()
     # thread_onkyo = Thread(target=initialise_onkyo)
     # thread_onkyo.start()
     try_load_local_config()
