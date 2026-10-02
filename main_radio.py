@@ -20,7 +20,7 @@ Press Ctrl+C to exit!
 
 """)
 
-MQTT_ADDRESS = "192."
+MQTT_ADDRESS = "192.168.1.137"
 
 SET_VOLUME = 100
 LONG_PRESS = 1
@@ -55,19 +55,50 @@ button_press_durations = {"5":None, "6":None, "16":None, "24":None}
 local_config = {'last_played': ""}
 
 global onkyo_device_ip_address
-
-
-def message_handling(client, userdata, msg):
-    print(f"{msg.topic}: {msg.payload.decode()}")
-
-
 global client
 
-def initialise_mqtt():
-    client = paho.Client()
-    client.on_message = message_handling
+def mqtt_message_handling(client, userdata, msg):
+    global is_playing
+    print(f"\t### MQTT Message: {msg.topic}: {msg.payload.decode()}")
 
-    if client.connect("localhost", 1883, 60) != 0:
+    if "bbc" in msg:
+        if "1" in msg:
+            station_name = "bbc_1"
+        if "2" in msg:
+            station_name = "bbc_2"
+        if "3" in msg:
+            station_name = "bbc_3"
+        if "4" in msg:
+            station_name = "bbc_4"
+        if "6" in msg:
+            station_name = "bbc_6"
+        
+        print(f"\t### station_name {station_name}")
+        play(station_dictionary[station_name], display)
+
+    if "mute" in msg:
+        print(f"...muting")
+        mute()
+
+    if "shutdown" in msg:
+        print(f"t= ...shutting down")
+        shutdown_now()
+
+    if "pause" in msg:
+        print(f"t= ...pause")
+        pause()
+
+    if "stop" in msg:
+        print(f"t= ...stop")
+        stop()
+
+
+def initialise_mqtt():
+    global client
+    client = paho.Client()
+    client.on_message = mqtt_message_handling
+
+    if client.connect(MQTT_ADDRESS, 1883, 60) != 0:
         print("Couldn't connect to the mqtt broker")
 
     client.subscribe("test_topic")    
@@ -307,7 +338,8 @@ try:
     # thread_onkyo.start()
     try_load_local_config()
     try_playing_last_played()
-    signal.pause()
+    # signal.pause()
+    client.loop_forever()
 except KeyboardInterrupt:
     display.show('blank')
     print("\nKeyboardInterrupt -- quitting")
