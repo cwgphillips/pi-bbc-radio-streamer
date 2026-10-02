@@ -308,9 +308,6 @@ def released(btn):
         button_pressed_state[label] = False # Clear logical state
         return
 
-    global button_end_times, button_press_durations
-    global is_playing, ignore_next_release, button_pressed_state
-
     button_end_times[str(pin)] = time.time()
     elapsed = button_end_times[str(pin)] - button_start_times[str(pin)]
     button_press_durations[str(pin)] = elapsed
