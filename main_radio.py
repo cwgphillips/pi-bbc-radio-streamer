@@ -3,6 +3,7 @@ from gpiozero import Button
 import os
 import time
 import json
+import subprocess
 
 import paho.mqtt.client as paho
 
@@ -47,6 +48,7 @@ boot_up = True
 is_playing = None
 is_stopped = True
 is_muted = False
+mpv_process = None
 
 button_start_times = {"5":None, "6":None, "16":None, "24":None}
 button_end_times = {"5":None, "6":None, "16":None, "24":None}
@@ -136,13 +138,11 @@ def try_load_local_config():
 
 
 def play(station:Station._Station, display:SqauareDisplay):
-    global is_playing, is_stopped
-    global boot_up
-    global display_areas_map
+    global is_playing, is_stopped, boot_up, display_areas_map, mpv_process
 
-    stopOK=stop()
+    stopOK = stop()
 
-    if stopOK==0 or boot_up:
+    if stopOK == 0 or boot_up:
         boot_up = False
         print("\t### Trying to play...")
 
@@ -150,7 +150,26 @@ def play(station:Station._Station, display:SqauareDisplay):
         display_areas_map["B"] = "pause"
         display.show_composite(*display_areas_map.values())
 
-        os.system(f"mpv --demuxer-lavf-o=protocol_whitelist=[http,https,tcp,file] {station.path_m3u8} --no-video --input-ipc-server=/tmp/mpvsocket --volume={SET_VOLUME} &")
+        # Clean up existing process if it's lingering
+        if mpv_process and mpv_process.poll() is None:
+            mpv_process.terminate()
+            mpv_process.wait()
+
+        # Launch mpv with increased buffers via subprocess
+        mpv_process = subprocess.Popen([
+            "mpv",
+            f"--demuxer-lavf-o=protocol_whitelist=[http,https,tcp,file]",
+            station.path_m3u8,
+            "--no-video",
+            "--input-ipc-server=/tmp/mpvsocket",
+            "--cache=yes",
+            "--demuxer-max-bytes=10M",
+            "--demuxer-max-back-bytes=5M",
+            "--stream-buffer-size=2M",
+            "--network-timeout=30",
+            f"--volume={SET_VOLUME}"
+        ])
+        
         is_playing = True
         is_stopped = False
         update_last_played(station.name)
@@ -306,6 +325,17 @@ def try_playing_last_played():
         play(station_dictionary[last_played], display)
 
 
+def watchdog_check():
+    global mpv_process, is_playing, is_stopped
+    
+    # If the radio isn't paused or stopped, but the process died
+    if is_playing and not is_stopped:
+        if mpv_process is None or mpv_process.poll() is not None:
+            print("\t### Watchdog: Stream died unexpectedly. Restarting in 3 seconds...")
+            time.sleep(3)
+            try_playing_last_played()
+
+
 stations = Station.Stations()
 station_dictionary = stations.station_dictionary
 station_names = stations.station_names()
@@ -330,17 +360,23 @@ for pin in BUTTONS:
     b.when_released = released
     b.when_held = held
 
-# Finally, since button handlers don't require a "while True" loop,
-# we pause the script to prevent it exiting immediately.
+
 try:
     initialise_mqtt()
-    # thread_onkyo = Thread(target=initialise_onkyo)
-    # thread_onkyo.start()
     try_load_local_config()
     try_playing_last_played()
-    # signal.pause()
-    client.loop_forever()
+    
+    # Start the MQTT listener in the background instead of blocking forever
+    client.loop_start() 
+    
+    # The new main loop that keeps Python alive and checks the stream
+    while True:
+        watchdog_check()
+        time.sleep(1)
+
 except KeyboardInterrupt:
     display.show('blank')
     print("\nKeyboardInterrupt -- quitting")
     try_turn_off_onkyo()
+    if mpv_process:
+        mpv_process.terminate() # Ensure mpv dies when you exit the script
