@@ -140,51 +140,53 @@ def try_load_local_config():
 def play(station:Station._Station, display:SqauareDisplay):
     global is_playing, is_stopped, boot_up, display_areas_map, mpv_process
 
-    stopOK = stop()
+    stop() # Clean up any existing state without checking for a return code
 
-    if stopOK == 0 or boot_up:
-        boot_up = False
-        print("\t### Trying to play...")
+    boot_up = False
+    print("\t### Trying to play...")
 
-        display_areas_map["Main"] = stations.station_for_display(station.name)
-        display_areas_map["B"] = "pause"
-        display.show_composite(*display_areas_map.values())
+    display_areas_map["Main"] = stations.station_for_display(station.name)
+    display_areas_map["B"] = "pause"
+    display.show_composite(*display_areas_map.values())
 
-        # Clean up existing process if it's lingering
-        if mpv_process and mpv_process.poll() is None:
-            mpv_process.terminate()
-            mpv_process.wait()
-
-        # Launch mpv with increased buffers via subprocess
-        mpv_process = subprocess.Popen([
-            "mpv",
-            f"--demuxer-lavf-o=protocol_whitelist=[http,https,tcp,file]",
-            station.path_m3u8,
-            "--no-video",
-            "--input-ipc-server=/tmp/mpvsocket",
-            "--cache=yes",
-            "--demuxer-max-bytes=10M",
-            "--demuxer-max-back-bytes=5M",
-            "--stream-buffer-size=2M",
-            "--network-timeout=30",
-            f"--volume={SET_VOLUME}"
-        ])
-        
-        is_playing = True
-        is_stopped = False
-        update_last_played(station.name)
-        print(f"\t### Should now be playing {station.name}...")
+    mpv_process = subprocess.Popen([
+        "mpv",
+        f"--demuxer-lavf-o=protocol_whitelist=[http,https,tcp,file]",
+        station.path_m3u8,
+        "--no-video",
+        "--input-ipc-server=/tmp/mpvsocket",
+        "--cache=yes",
+        "--demuxer-max-bytes=10M",
+        "--demuxer-max-back-bytes=5M",
+        "--stream-buffer-size=2M",
+        "--network-timeout=30",
+        f"--volume={SET_VOLUME}"
+    ])
+    
+    is_playing = True
+    is_stopped = False
+    update_last_played(station.name)
+    print(f"\t### Should now be playing {station.name}...")
 
 
 def stop():
-    global display_areas_map, is_stopped
-    sysOut = os.system('echo "stop" | socat - /tmp/mpvsocket && rm /tmp/mpvsocket')
-    if sysOut == 0:
-        display_areas_map["Main"] = "blank"
-        display_areas_map["B"] = "blank"
-        display.show_composite(*display_areas_map.values())
-        is_stopped = True
-    return sysOut
+    global display_areas_map, is_stopped, mpv_process
+    
+    # Terminate the process cleanly if it exists
+    if mpv_process and mpv_process.poll() is None:
+        mpv_process.terminate()
+        mpv_process.wait()
+
+    # Clean up the socket file to prevent conflicts on the next run
+    if os.path.exists('/tmp/mpvsocket'):
+        os.remove('/tmp/mpvsocket')
+
+    display_areas_map["Main"] = "blank"
+    display_areas_map["B"] = "blank"
+    display.show_composite(*display_areas_map.values())
+    is_stopped = True
+    
+    return 0 # Always return success so play() doesn't get blocked
 
 
 def pause():
