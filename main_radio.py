@@ -235,7 +235,7 @@ def rewind():
 def fast_forward():
     global is_playing
     if is_playing:
-        print('Fast forwarding 10 seconds...')
+        print('### Fast forwarding 10 seconds...')
         # Seeks forward 10 seconds (only works if you've already rewound)
         os.system('echo \'{ "command": ["seek", 10] }\' | socat - /tmp/mpvsocket')
 
@@ -243,7 +243,7 @@ def fast_forward():
 def return_to_live():
     global is_playing
     if is_playing:
-        print('Returning to live stream...')
+        print('### Returning to live stream...')
         # Seeks to 100% of the current buffer to catch up to live broadcast
         os.system('echo \'{ "command": ["seek", 100, "absolute-percent"] }\' | socat - /tmp/mpvsocket')
 
