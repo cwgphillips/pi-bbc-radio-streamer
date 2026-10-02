@@ -297,6 +297,9 @@ def pressed(btn):
 
 # https://github.com/gpiozero/gpiozero/issues/685#issuecomment-454201563
 def released(btn):
+    global button_end_times, button_press_durations
+    global is_playing, ignore_next_release, button_pressed_state
+    
     pin = btn.pin.number
     label = LABELS[BUTTONS.index(pin)]
 
