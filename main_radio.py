@@ -223,6 +223,14 @@ def mute():
     display.show_composite(*display_areas_map.values())
 
 
+def rewind():
+    global is_playing
+    if is_playing:
+        print('Rewinding 10 seconds...')
+        # Sends a relative seek command (-10 seconds) to the running mpv process
+        os.system('echo \'{ "command": ["seek", -10] }\' | socat - /tmp/mpvsocket')
+        
+
 def held(btn):
     btn.was_held = True
     pin = btn.pin.number
@@ -282,6 +290,18 @@ def released(btn):
     label = LABELS[BUTTONS.index(pin)]
     print(f"\t### Button {pin} (label: {label}) was released after {elapsed} seconds.")
 
+    # --- COMBO CHECK ---
+    # If A is released while B is pressed, OR B is released while A is pressed
+    if (label == "A" and hardware_buttons["B"].is_active) or \
+       (label == "B" and hardware_buttons["A"].is_active):
+        
+        # Only trigger rewind once (ignore the second button release)
+        if label == "A": 
+            rewind()
+            
+        # Stop here so we don't accidentally play or pause!
+        return 
+    # -------------------
 
     if label == "A" or label == "X":
         if elapsed:
@@ -356,12 +376,18 @@ display.show_composite(*display_areas_map.values())
 
 # Buttons connect to ground when pressed, so they should be set
 # with a "PULL UP", which weakly pulls the input signal to 3.3V.
+# Create a dictionary to store the button objects globally
+hardware_buttons = {}
+
 for pin in BUTTONS:
     b = Button(pin, bounce_time=0.05, hold_time=LONG_PRESS+0.5, hold_repeat=True)
     b.when_pressed = pressed
     b.when_released = released
     b.when_held = held
-
+    
+    # Save the button object using its label (A, B, X, Y) as the key
+    label = LABELS[BUTTONS.index(pin)]
+    hardware_buttons[label] = b
 
 try:
     initialise_mqtt()
