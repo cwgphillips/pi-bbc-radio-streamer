@@ -49,6 +49,7 @@ is_playing = None
 is_stopped = True
 is_muted = False
 mpv_process = None
+ignore_next_release = None
 
 button_start_times = {"5":None, "6":None, "16":None, "24":None}
 button_end_times = {"5":None, "6":None, "16":None, "24":None}
@@ -226,7 +227,7 @@ def mute():
 def rewind():
     global is_playing
     if is_playing:
-        print('Rewinding 10 seconds...')
+        print('### Rewinding 10 seconds...')
         # Sends a relative seek command (-10 seconds) to the running mpv process
         os.system('echo \'{ "command": ["seek", -10] }\' | socat - /tmp/mpvsocket')
         
@@ -281,7 +282,7 @@ def released(btn):
         return
 
     global button_end_times, button_press_durations
-    global is_playing
+    global is_playing, ignore_next_release # <-- Added ignore_next_release here
 
     button_end_times[str(pin)] = time.time()
     elapsed = button_end_times[str(pin)] - button_start_times[str(pin)]
@@ -291,15 +292,19 @@ def released(btn):
     print(f"\t### Button {pin} (label: {label}) was released after {elapsed} seconds.")
 
     # --- COMBO CHECK ---
-    # If A is released while B is pressed, OR B is released while A is pressed
+    # 1. If this button was the second half of a combo, ignore it and clear the flag
+    if ignore_next_release == label:
+        ignore_next_release = None
+        return
+
+    # 2. If A is released while B is pressed, OR B is released while A is pressed
     if (label == "A" and hardware_buttons["B"].is_active) or \
        (label == "B" and hardware_buttons["A"].is_active):
         
-        # Only trigger rewind once (ignore the second button release)
-        if label == "A": 
-            rewind()
-            
-        # Stop here so we don't accidentally play or pause!
+        rewind()
+        
+        # Flag whichever button is STILL being pressed so we ignore it when it gets released
+        ignore_next_release = "B" if label == "A" else "A"
         return 
     # -------------------
 
