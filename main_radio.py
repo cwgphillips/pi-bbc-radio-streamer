@@ -230,7 +230,23 @@ def rewind():
         print('### Rewinding 10 seconds...')
         # Sends a relative seek command (-10 seconds) to the running mpv process
         os.system('echo \'{ "command": ["seek", -10] }\' | socat - /tmp/mpvsocket')
-        
+
+
+def fast_forward():
+    global is_playing
+    if is_playing:
+        print('Fast forwarding 10 seconds...')
+        # Seeks forward 10 seconds (only works if you've already rewound)
+        os.system('echo \'{ "command": ["seek", 10] }\' | socat - /tmp/mpvsocket')
+
+
+def return_to_live():
+    global is_playing
+    if is_playing:
+        print('Returning to live stream...')
+        # Seeks to 100% of the current buffer to catch up to live broadcast
+        os.system('echo \'{ "command": ["seek", 100, "absolute-percent"] }\' | socat - /tmp/mpvsocket')
+
 
 def held(btn):
     btn.was_held = True
@@ -291,20 +307,31 @@ def released(btn):
     label = LABELS[BUTTONS.index(pin)]
     print(f"\t### Button {pin} (label: {label}) was released after {elapsed} seconds.")
 
-    # --- COMBO CHECK ---
+# --- COMBO CHECK ---
     # 1. If this button was the second half of a combo, ignore it and clear the flag
     if ignore_next_release == label:
         ignore_next_release = None
         return
 
-    # 2. If A is released while B is pressed, OR B is released while A is pressed
+    # 2. Check for A+B (Rewind 10s)
     if (label == "A" and hardware_buttons["B"].is_active) or \
        (label == "B" and hardware_buttons["A"].is_active):
-        
         rewind()
-        
-        # Flag whichever button is STILL being pressed so we ignore it when it gets released
         ignore_next_release = "B" if label == "A" else "A"
+        return 
+
+    # 3. Check for X+Y (Fast Forward 10s)
+    if (label == "X" and hardware_buttons["Y"].is_active) or \
+       (label == "Y" and hardware_buttons["X"].is_active):
+        fast_forward()
+        ignore_next_release = "Y" if label == "X" else "X"
+        return 
+
+    # 4. Check for A+X (Return to Live)
+    if (label == "A" and hardware_buttons["X"].is_active) or \
+       (label == "X" and hardware_buttons["A"].is_active):
+        return_to_live()
+        ignore_next_release = "X" if label == "A" else "A"
         return 
     # -------------------
 
