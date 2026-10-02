@@ -50,6 +50,7 @@ is_stopped = True
 is_muted = False
 mpv_process = None
 ignore_next_release = None
+button_pressed_state = {"A": False, "B": False, "X": False, "Y": False} 
 
 button_start_times = {"5":None, "6":None, "16":None, "24":None}
 button_end_times = {"5":None, "6":None, "16":None, "24":None}
@@ -284,53 +285,59 @@ def get_next_station_name(label):
 
 
 def pressed(btn):
-    global button_start_time
+    global button_start_times, button_pressed_state
+    
+    pin = btn.pin.number
+    label = LABELS[BUTTONS.index(pin)]
 
-    button_start_times[str(btn.pin.number)] = time.time()
+    button_start_times[str(pin)] = time.time()
+    button_pressed_state[label] = True # Logically mark it as pressed
     btn.was_held = False
 
 
 # https://github.com/gpiozero/gpiozero/issues/685#issuecomment-454201563
 def released(btn):
     pin = btn.pin.number
+    label = LABELS[BUTTONS.index(pin)]
 
     if btn.was_held:
         print(f"\t### Button {pin} was held so skipping...")
+        button_pressed_state[label] = False # Clear logical state
         return
 
     global button_end_times, button_press_durations
-    global is_playing, ignore_next_release # <-- Added ignore_next_release here
+    global is_playing, ignore_next_release, button_pressed_state
 
     button_end_times[str(pin)] = time.time()
     elapsed = button_end_times[str(pin)] - button_start_times[str(pin)]
     button_press_durations[str(pin)] = elapsed
        
-    label = LABELS[BUTTONS.index(pin)]
+    button_pressed_state[label] = False # Mark as released locally
     print(f"\t### Button {pin} (label: {label}) was released after {elapsed} seconds.")
 
-# --- COMBO CHECK ---
+    # --- COMBO CHECK ---
     # 1. If this button was the second half of a combo, ignore it and clear the flag
     if ignore_next_release == label:
         ignore_next_release = None
         return
 
     # 2. Check for A+B (Rewind 10s)
-    if (label == "A" and hardware_buttons["B"].is_active) or \
-       (label == "B" and hardware_buttons["A"].is_active):
+    if (label == "A" and button_pressed_state["B"]) or \
+       (label == "B" and button_pressed_state["A"]):
         rewind()
         ignore_next_release = "B" if label == "A" else "A"
         return 
 
     # 3. Check for X+Y (Fast Forward 10s)
-    if (label == "X" and hardware_buttons["Y"].is_active) or \
-       (label == "Y" and hardware_buttons["X"].is_active):
+    if (label == "X" and button_pressed_state["Y"]) or \
+       (label == "Y" and button_pressed_state["X"]):
         fast_forward()
         ignore_next_release = "Y" if label == "X" else "X"
         return 
 
     # 4. Check for A+X (Return to Live)
-    if (label == "A" and hardware_buttons["X"].is_active) or \
-       (label == "X" and hardware_buttons["A"].is_active):
+    if (label == "A" and button_pressed_state["X"]) or \
+       (label == "X" and button_pressed_state["A"]):
         return_to_live()
         ignore_next_release = "X" if label == "A" else "A"
         return 
