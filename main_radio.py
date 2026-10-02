@@ -161,6 +161,7 @@ def play(station:Station._Station, display:SqauareDisplay):
         "--demuxer-max-back-bytes=5M",
         "--stream-buffer-size=2M",
         "--network-timeout=30",
+        "--force-seekable=yes",
         f"--volume={SET_VOLUME}"
     ])
     
